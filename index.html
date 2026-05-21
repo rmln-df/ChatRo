@@ -2,440 +2,529 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- VIEWPORT CORRIGIDO -->
+    <meta name="viewport"
+          content="width=device-width,
+                   initial-scale=1.0,
+                   viewport-fit=cover">
+
     <title>Chat App</title>
 
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            -webkit-tap-highlight-color: transparent;
+
+        *{
+            box-sizing:border-box;
+            margin:0;
+            padding:0;
+            font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+            -webkit-tap-highlight-color:transparent;
         }
 
-        body, html {
-            height: 100%;
-            width: 100%;
-            overflow: hidden;
-            background-color: #f0f2f5;
+        /* CORREÇÃO MOBILE / GITHUB PAGES */
+        body,html{
+            width:100%;
+            height:100%;
+            min-height:100dvh;
+            overflow:hidden;
+            background-color:#f0f2f5;
         }
 
-        /* TELA DE LOGIN / CADASTRO OVERLAY */
-        .auth-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: #f0f2f5;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            transition: opacity 0.3s ease;
+        /* TELA LOGIN */
+        .auth-overlay{
+            position:fixed;
+            top:0;
+            left:0;
+            width:100vw;
+            height:100dvh;
+            background-color:#f0f2f5;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            z-index:9999;
+            transition:opacity .3s ease;
         }
 
-        .auth-card {
-            background: #ffffff;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
+        .auth-card{
+            background:#ffffff;
+            padding:40px;
+            border-radius:12px;
+            box-shadow:0 4px 15px rgba(0,0,0,0.1);
+            width:100%;
+            max-width:400px;
+            text-align:center;
         }
 
-        .auth-card h2 {
-            color: #008069;
-            margin-bottom: 10px;
+        .auth-card h2{
+            color:#008069;
+            margin-bottom:10px;
         }
 
-        .auth-card p {
-            color: #666;
-            font-size: 0.9rem;
-            margin-bottom: 25px;
+        .auth-card p{
+            color:#666;
+            font-size:.9rem;
+            margin-bottom:25px;
         }
 
-        .auth-form-group {
-            margin-bottom: 15px;
-            text-align: left;
+        .auth-form-group{
+            margin-bottom:15px;
+            text-align:left;
         }
 
-        .auth-form-group label {
-            display: block;
-            font-size: 0.85rem;
-            color: #333;
-            margin-bottom: 5px;
-            font-weight: 600;
+        .auth-form-group label{
+            display:block;
+            font-size:.85rem;
+            color:#333;
+            margin-bottom:5px;
+            font-weight:600;
         }
 
-        .auth-form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            outline: none;
-            font-size: 1rem;
+        .auth-form-group input{
+            width:100%;
+            padding:12px;
+            border:1px solid #ccc;
+            border-radius:8px;
+            outline:none;
+            font-size:1rem;
         }
 
-        .auth-form-group input:focus {
-            border-color: #008069;
+        .auth-form-group input:focus{
+            border-color:#008069;
         }
 
-        .auth-btn {
-            width: 100%;
-            padding: 12px;
-            background-color: #008069;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 10px;
+        .auth-btn{
+            width:100%;
+            padding:12px;
+            background-color:#008069;
+            color:white;
+            border:none;
+            border-radius:8px;
+            font-size:1rem;
+            font-weight:bold;
+            cursor:pointer;
+            margin-top:10px;
         }
 
-        .auth-btn:hover {
-            background-color: #006654;
+        .auth-btn:hover{
+            background-color:#006654;
         }
 
-        .auth-toggle {
-            margin-top: 20px;
-            font-size: 0.9rem;
-            color: #555;
+        .auth-toggle{
+            margin-top:20px;
+            font-size:.9rem;
+            color:#555;
         }
 
-        .auth-toggle span {
-            color: #008069;
-            cursor: pointer;
-            font-weight: bold;
+        .auth-toggle span{
+            color:#008069;
+            cursor:pointer;
+            font-weight:bold;
         }
 
-        .auth-error {
-            color: #e53935;
-            font-size: 0.85rem;
-            margin-top: 10px;
-            display: none;
+        .auth-error{
+            color:#e53935;
+            font-size:.85rem;
+            margin-top:10px;
+            display:none;
         }
 
-        /* CONTAINER PRINCIPAL DO CHAT */
-        .chat-container {
-            display: none;
-            width: 100vw;
-            height: 100vh;
-            background-color: #fff;
+        /* CHAT */
+        .chat-container{
+            display:none;
+            width:100vw;
+            height:100dvh;
+            min-height:100dvh;
+            background-color:#fff;
+            overflow:hidden;
         }
 
-        /* Barra Lateral */
-        .sidebar {
-            width: 350px;
-            height: 100%;
-            border-right: 1px solid #e0e0e0;
-            display: flex;
-            flex-direction: column;
-            background-color: #ffffff;
+        /* SIDEBAR */
+        .sidebar{
+            width:350px;
+            height:100%;
+            border-right:1px solid #e0e0e0;
+            display:flex;
+            flex-direction:column;
+            background-color:#ffffff;
         }
 
-        .sidebar-header {
-            padding: 20px;
-            background-color: #008069;
-            font-weight: bold;
-            font-size: 1.2rem;
-            color: #ffffff;
-            border-bottom: 1px solid #006654;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .sidebar-header{
+            padding:20px;
+            background-color:#008069;
+            font-weight:bold;
+            font-size:1.2rem;
+            color:#ffffff;
+            border-bottom:1px solid #006654;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
         }
 
-        .logout-btn {
-            background: transparent;
-            border: 1px solid #ffffff;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.8rem;
+        .logout-btn{
+            background:transparent;
+            border:1px solid #ffffff;
+            color:white;
+            padding:5px 10px;
+            border-radius:4px;
+            cursor:pointer;
+            font-size:.8rem;
         }
 
-        .logout-btn:hover {
-            background: rgba(255,255,255,0.1);
+        .logout-btn:hover{
+            background:rgba(255,255,255,0.1);
         }
 
-        .chat-list {
-            flex: 1;
-            overflow-y: auto;
+        .chat-list{
+            flex:1;
+            overflow-y:auto;
         }
 
-        .chat-item {
-            display: flex;
-            align-items: center;
-            padding: 15px 20px;
-            cursor: pointer;
-            border-bottom: 1px solid #f0f2f5;
+        .chat-item{
+            display:flex;
+            align-items:center;
+            padding:15px 20px;
+            cursor:pointer;
+            border-bottom:1px solid #f0f2f5;
         }
 
-        .chat-item.active {
-            background-color: #f0f2f5;
+        .chat-item.active{
+            background-color:#f0f2f5;
         }
 
-        .avatar {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background-color: #59666e;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            margin-right: 15px;
+        .avatar{
+            width:45px;
+            height:45px;
+            border-radius:50%;
+            background-color:#59666e;
+            color:white;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-weight:bold;
+            margin-right:15px;
         }
 
-        .chat-info {
-            flex: 1;
+        .chat-info{
+            flex:1;
         }
 
-        .chat-name {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 5px;
+        .chat-name{
+            font-weight:600;
+            color:#333;
+            margin-bottom:5px;
         }
 
-        .chat-last-msg {
-            font-size: 0.85rem;
-            color: #666;
+        .chat-last-msg{
+            font-size:.85rem;
+            color:#666;
         }
 
-        /* Área do Chat */
-        .main-chat {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            background-color: #efeae2;
+        /* MAIN CHAT */
+        .main-chat{
+            flex:1;
+            display:flex;
+            flex-direction:column;
+            height:100%;
+            min-height:0;
+            background-color:#efeae2;
+            overflow:hidden;
         }
 
-        .chat-header {
-            padding: 15px 20px;
-            background-color: #008069;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid #006654;
-            color: #ffffff;
-            position: relative;
+        .chat-header{
+            padding:15px 20px;
+            background-color:#008069;
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            border-bottom:1px solid #006654;
+            color:#ffffff;
+            position:relative;
+            flex-shrink:0;
         }
 
-        .header-left {
-            display: flex;
-            align-items: center;
+        .header-left{
+            display:flex;
+            align-items:center;
         }
 
-        .chat-header .avatar {
-            width: 40px;
-            height: 40px;
-            background-color: #4f5d64;
+        .chat-header .avatar{
+            width:40px;
+            height:40px;
+            background-color:#4f5d64;
         }
 
-        .chat-header .chat-name {
-            color: #ffffff;
-            margin-left: 15px;
+        .chat-header .chat-name{
+            color:#ffffff;
+            margin-left:15px;
         }
 
-        /* MENU SUPERIOR */
-        .menu-container {
-            position: relative;
+        /* MENU */
+        .menu-container{
+            position:relative;
         }
 
-        .menu-btn {
-            width: 42px;
-            height: 42px;
-            border: none;
-            background: transparent;
-            color: white;
-            font-size: 26px;
-            cursor: pointer;
-            border-radius: 50%;
+        .menu-btn{
+            width:42px;
+            height:42px;
+            border:none;
+            background:transparent;
+            color:white;
+            font-size:26px;
+            cursor:pointer;
+            border-radius:50%;
         }
 
-        .menu-btn:hover {
-            background: rgba(255,255,255,0.12);
+        .menu-btn:hover{
+            background:rgba(255,255,255,0.12);
         }
 
-        .dropdown-menu {
-            position: absolute;
-            top: 50px;
-            right: 0;
-            background: white;
-            width: 220px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.18);
-            overflow: hidden;
-            display: none;
-            z-index: 999;
+        .dropdown-menu{
+            position:absolute;
+            top:50px;
+            right:0;
+            background:white;
+            width:220px;
+            border-radius:10px;
+            box-shadow:0 4px 15px rgba(0,0,0,0.18);
+            overflow:hidden;
+            display:none;
+            z-index:999;
         }
 
-        .dropdown-menu.active {
-            display: block;
+        .dropdown-menu.active{
+            display:block;
         }
 
-        .menu-item {
-            padding: 14px 16px;
-            cursor: pointer;
-            color: #333;
-            font-size: 0.95rem;
-            border-bottom: 1px solid #f0f0f0;
+        .menu-item{
+            padding:14px 16px;
+            cursor:pointer;
+            color:#333;
+            font-size:.95rem;
+            border-bottom:1px solid #f0f0f0;
         }
 
-        .menu-item:hover {
-            background: #f5f5f5;
+        .menu-item:hover{
+            background:#f5f5f5;
         }
 
-        .menu-danger {
-            color: #d32f2f;
-            font-weight: bold;
+        .menu-danger{
+            color:#d32f2f;
+            font-weight:bold;
         }
 
-        .messages-window {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+        /* MENSAGENS */
+        .messages-window{
+            flex:1;
+            padding:20px;
+            overflow-y:auto;
+            overflow-x:hidden;
+            display:flex;
+            flex-direction:column;
+            gap:10px;
+            min-height:0;
+            -webkit-overflow-scrolling:touch;
         }
 
-        /* Balões */
-        .message {
-            max-width: 65%;
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            line-height: 1.4;
-            position: relative;
-            word-wrap: break-word;
-            box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
-            user-select: none;
+        .message{
+            max-width:65%;
+            padding:10px 15px;
+            border-radius:8px;
+            font-size:.95rem;
+            line-height:1.4;
+            position:relative;
+            word-wrap:break-word;
+            box-shadow:0 1px .5px rgba(0,0,0,.13);
+            user-select:none;
         }
 
-        .message .sender-tag {
-            display: block;
-            font-size: 0.75rem;
-            font-weight: bold;
-            color: #008069;
-            margin-bottom: 3px;
+        .message .sender-tag{
+            display:block;
+            font-size:.75rem;
+            font-weight:bold;
+            color:#008069;
+            margin-bottom:3px;
         }
 
-        .message.sent {
-            background-color: #d9fdd3;
-            align-self: flex-end;
-            border-top-right-radius: 0;
+        .message.sent{
+            background-color:#d9fdd3;
+            align-self:flex-end;
+            border-top-right-radius:0;
         }
 
-        .message.received {
-            background-color: #ffffff;
-            align-self: flex-start;
-            border-top-left-radius: 0;
+        .message.received{
+            background-color:#ffffff;
+            align-self:flex-start;
+            border-top-left-radius:0;
         }
 
-        .message.selected {
-            outline: 3px solid #008069;
+        .message.selected{
+            outline:3px solid #008069;
         }
 
-        .message-time {
-            font-size: 0.7rem;
-            color: #667781;
-            text-align: right;
-            margin-top: 5px;
-            display: block;
+        .message-time{
+            font-size:.7rem;
+            color:#667781;
+            text-align:right;
+            margin-top:5px;
+            display:block;
         }
 
-        .input-area {
-            padding: 15px 20px;
-            background-color: #f0f2f5;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        /* INPUT */
+        .input-area{
+            padding:15px 20px calc(15px + env(safe-area-inset-bottom));
+            background-color:#f0f2f5;
+            display:flex;
+            align-items:center;
+            gap:10px;
+            position:sticky;
+            bottom:0;
+            z-index:50;
+            flex-shrink:0;
         }
 
-        .input-area input {
-            flex: 1;
-            padding: 12px 15px;
-            border: 1px solid #fff;
-            border-radius: 8px;
-            font-size: 1rem;
-            outline: none;
+        .input-area input{
+            flex:1;
+            padding:12px 15px;
+            border:1px solid #fff;
+            border-radius:8px;
+            font-size:1rem;
+            outline:none;
         }
 
-        .send-btn {
-            background-color: #008069;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
+        .send-btn{
+            background-color:#008069;
+            color:white;
+            border:none;
+            padding:12px 20px;
+            border-radius:8px;
+            font-weight:bold;
+            cursor:pointer;
+            flex-shrink:0;
         }
 
-        @media (max-width: 768px) {
-            .sidebar { display: none; }
-            .message { max-width: 85%; }
+        @media (max-width:768px){
+
+            .sidebar{
+                display:none;
+            }
+
+            .message{
+                max-width:85%;
+            }
+
+            .auth-card{
+                margin:15px;
+                padding:30px 20px;
+            }
         }
+
     </style>
 </head>
+
 <body>
 
-    <!-- Tela de Autenticação -->
+    <!-- LOGIN -->
     <div class="auth-overlay" id="auth-overlay">
+
         <div class="auth-card">
+
             <h2 id="auth-title">Entrar no Chatro</h2>
-            <p id="auth-subtitle">Insira suas credenciais para acessar a sala</p>
-            
-            <div class="auth-form-group" id="name-group" style="display: none;">
-                <label for="auth-name">Seu Nome / Apelido</label>
-                <input type="text" id="auth-name" placeholder="Ex: João Silva">
+
+            <p id="auth-subtitle">
+                Insira suas credenciais para acessar a sala
+            </p>
+
+            <div class="auth-form-group"
+                 id="name-group"
+                 style="display:none;">
+
+                <label for="auth-name">
+                    Seu Nome / Apelido
+                </label>
+
+                <input type="text"
+                       id="auth-name"
+                       placeholder="Ex: João Silva">
             </div>
 
             <div class="auth-form-group">
                 <label for="auth-email">E-mail</label>
-                <input type="email" id="auth-email" placeholder="seuemail@provedor.com">
+
+                <input type="email"
+                       id="auth-email"
+                       placeholder="seuemail@provedor.com">
             </div>
 
             <div class="auth-form-group">
-                <label for="auth-password">Senha (mínimo 6 dígitos)</label>
-                <input type="password" id="auth-password" placeholder="******">
+
+                <label for="auth-password">
+                    Senha (mínimo 6 dígitos)
+                </label>
+
+                <input type="password"
+                       id="auth-password"
+                       placeholder="******">
             </div>
 
-            <div class="auth-error" id="auth-error">Erro ao autenticar</div>
+            <div class="auth-error" id="auth-error">
+                Erro ao autenticar
+            </div>
 
-            <button class="auth-btn" id="auth-submit-btn">Entrar</button>
+            <button class="auth-btn"
+                    id="auth-submit-btn">
+
+                Entrar
+            </button>
 
             <div class="auth-toggle">
-                <span id="auth-toggle-text">Não tem uma conta? Cadastre-se</span>
+                <span id="auth-toggle-text">
+                    Não tem uma conta? Cadastre-se
+                </span>
             </div>
+
         </div>
+
     </div>
 
-    <!-- Estrutura do Chat -->
+    <!-- CHAT -->
     <div class="chat-container" id="chat-container">
+
         <aside class="sidebar">
+
             <div class="sidebar-header">
+
                 <span>Conversas</span>
-                <button class="logout-btn" id="logout-button">Sair</button>
+
+                <button class="logout-btn"
+                        id="logout-button">
+
+                    Sair
+                </button>
+
             </div>
 
             <div class="chat-list">
+
                 <div class="chat-item active">
+
                     <div class="avatar">SG</div>
 
                     <div class="chat-info">
-                        <div class="chat-name">Sala Geral</div>
-                        <div class="chat-last-msg">Histórico em nuvem ativo</div>
+
+                        <div class="chat-name">
+                            Sala Geral
+                        </div>
+
+                        <div class="chat-last-msg">
+                            Histórico em nuvem ativo
+                        </div>
+
                     </div>
+
                 </div>
+
             </div>
+
         </aside>
 
         <main class="main-chat">
@@ -443,456 +532,580 @@
             <header class="chat-header">
 
                 <div class="header-left">
+
                     <div class="avatar">SG</div>
-                    <div class="chat-name">Chatro - Sala Geral</div>
+
+                    <div class="chat-name">
+                        Chatro - Sala Geral
+                    </div>
+
                 </div>
 
-                <!-- MENU SUPERIOR -->
+                <!-- MENU -->
                 <div class="menu-container">
-                    <button class="menu-btn" id="menu-btn">⋮</button>
 
-                    <div class="dropdown-menu" id="dropdown-menu">
-                        <div class="menu-item" id="delete-selected-btn">
+                    <button class="menu-btn"
+                            id="menu-btn">
+
+                        ⋮
+                    </button>
+
+                    <div class="dropdown-menu"
+                         id="dropdown-menu">
+
+                        <div class="menu-item"
+                             id="delete-selected-btn">
+
                             Apagar mensagem selecionada
                         </div>
 
-                        <div class="menu-item menu-danger" id="clear-chat-btn">
+                        <div class="menu-item menu-danger"
+                             id="clear-chat-btn">
+
                             Limpar todas as mensagens da tela
                         </div>
+
                     </div>
+
                 </div>
 
             </header>
 
-            <div class="messages-window" id="messages-window"></div>
+            <div class="messages-window"
+                 id="messages-window">
+            </div>
 
             <div class="input-area">
-                <input type="text" id="message-input" placeholder="Digite uma mensagem..." autocomplete="off">
-                <button class="send-btn" id="send-button">Enviar</button>
+
+                <input type="text"
+                       id="message-input"
+                       placeholder="Digite uma mensagem..."
+                       autocomplete="off">
+
+                <button class="send-btn"
+                        id="send-button">
+
+                    Enviar
+                </button>
+
             </div>
 
         </main>
+
     </div>
 
-    <!-- Script com Módulos Firebase -->
-    <script type="module">
+<script type="module">
 
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 
-        import {
-            getAuth,
-            createUserWithEmailAndPassword,
-            signInWithEmailAndPassword,
-            updateProfile,
-            signOut,
-            onAuthStateChanged
-        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    updateProfile,
+    signOut,
+    onAuthStateChanged
+}
+from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        import {
-            getFirestore,
-            collection,
-            addDoc,
-            query,
-            orderBy,
-            onSnapshot,
-            serverTimestamp
-        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import {
+    getFirestore,
+    collection,
+    addDoc,
+    query,
+    orderBy,
+    onSnapshot,
+    serverTimestamp
+}
+from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Configurações originais mantidas
-        const firebaseConfig = {
-            apiKey: "AIzaSyBVTpFoYGWPk9_QJOz8_ZP9-pn6DYPOEao",
-            authDomain: "chatro-e591c.firebaseapp.com",
-            projectId: "chatro-e591c",
-            storageBucket: "chatro-e591c.firebasestorage.app",
-            messagingSenderId: "619166274157",
-            appId: "1:619166274157:web:35f8210256dbd73d58e564"
-        };
+/* FIREBASE */
+const firebaseConfig = {
+    apiKey:"AIzaSyBVTpFoYGWPk9_QJOz8_ZP9-pn6DYPOEao",
+    authDomain:"chatro-e591c.firebaseapp.com",
+    projectId:"chatro-e591c",
+    storageBucket:"chatro-e591c.appspot.com",
+    messagingSenderId:"619166274157",
+    appId:"1:619166274157:web:35f8210256dbd73d58e564"
+};
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-        // Elementos Interface
-        const authOverlay = document.getElementById('auth-overlay');
-        const chatContainer = document.getElementById('chat-container');
-        const messagesWindow = document.getElementById('messages-window');
-        const messageInput = document.getElementById('message-input');
-        const sendButton = document.getElementById('send-button');
-        const logoutButton = document.getElementById('logout-button');
+/* ELEMENTOS */
+const authOverlay =
+    document.getElementById('auth-overlay');
 
-        // Menu
-        const menuBtn = document.getElementById('menu-btn');
-        const dropdownMenu = document.getElementById('dropdown-menu');
-        const deleteSelectedBtn = document.getElementById('delete-selected-btn');
-        const clearChatBtn = document.getElementById('clear-chat-btn');
+const chatContainer =
+    document.getElementById('chat-container');
 
-        // Auth
-        const authTitle = document.getElementById('auth-title');
-        const nameGroup = document.getElementById('name-group');
-        const authEmail = document.getElementById('auth-email');
-        const authPassword = document.getElementById('auth-password');
-        const authName = document.getElementById('auth-name');
-        const authSubmitBtn = document.getElementById('auth-submit-btn');
-        const authToggleText = document.getElementById('auth-toggle-text');
-        const authError = document.getElementById('auth-error');
+const messagesWindow =
+    document.getElementById('messages-window');
 
-        let isLoginMode = true;
-        let currentUser = null;
-        let unsubscribeSnapshot = null;
-        let acaoDoBotaoAtiva = false;
+const messageInput =
+    document.getElementById('message-input');
 
-        // Controle da mensagem selecionada
-        let selectedMessage = null;
+const sendButton =
+    document.getElementById('send-button');
 
-        // MENU
-        menuBtn.addEventListener('click', () => {
-            dropdownMenu.classList.toggle('active');
-        });
+const logoutButton =
+    document.getElementById('logout-button');
 
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.menu-container')) {
-                dropdownMenu.classList.remove('active');
-            }
-        });
+const menuBtn =
+    document.getElementById('menu-btn');
 
-        // Deletar mensagem selecionada
-        deleteSelectedBtn.addEventListener('click', () => {
+const dropdownMenu =
+    document.getElementById('dropdown-menu');
 
-            if (!selectedMessage) {
-                alert('Selecione uma mensagem segurando nela.');
-                return;
-            }
+const deleteSelectedBtn =
+    document.getElementById('delete-selected-btn');
 
-            selectedMessage.remove();
-            selectedMessage = null;
+const clearChatBtn =
+    document.getElementById('clear-chat-btn');
 
-            dropdownMenu.classList.remove('active');
-        });
+const authTitle =
+    document.getElementById('auth-title');
 
-        // Limpar tudo da tela
-        clearChatBtn.addEventListener('click', () => {
+const nameGroup =
+    document.getElementById('name-group');
 
-            const confirmar = confirm(
-                'Deseja apagar todas as mensagens exibidas na tela?'
+const authEmail =
+    document.getElementById('auth-email');
+
+const authPassword =
+    document.getElementById('auth-password');
+
+const authName =
+    document.getElementById('auth-name');
+
+const authSubmitBtn =
+    document.getElementById('auth-submit-btn');
+
+const authToggleText =
+    document.getElementById('auth-toggle-text');
+
+const authError =
+    document.getElementById('auth-error');
+
+let isLoginMode = true;
+let currentUser = null;
+let unsubscribeSnapshot = null;
+let acaoDoBotaoAtiva = false;
+let selectedMessage = null;
+
+/* MENU */
+menuBtn.addEventListener('click',()=>{
+
+    dropdownMenu.classList.toggle('active');
+
+});
+
+document.addEventListener('click',(e)=>{
+
+    if(!e.target.closest('.menu-container')){
+        dropdownMenu.classList.remove('active');
+    }
+
+});
+
+/* DELETAR */
+deleteSelectedBtn.addEventListener('click',()=>{
+
+    if(!selectedMessage){
+
+        alert('Selecione uma mensagem segurando nela.');
+
+        return;
+    }
+
+    selectedMessage.remove();
+
+    selectedMessage = null;
+
+    dropdownMenu.classList.remove('active');
+
+});
+
+/* LIMPAR */
+clearChatBtn.addEventListener('click',()=>{
+
+    const confirmar = confirm(
+        'Deseja apagar todas as mensagens exibidas na tela?'
+    );
+
+    if(confirmar){
+
+        messagesWindow.innerHTML = '';
+
+        selectedMessage = null;
+    }
+
+    dropdownMenu.classList.remove('active');
+
+});
+
+/* TOGGLE */
+authToggleText.addEventListener('click',()=>{
+
+    isLoginMode = !isLoginMode;
+
+    authError.style.display = 'none';
+
+    if(isLoginMode){
+
+        authTitle.innerText = "Entrar no Chatro";
+
+        nameGroup.style.display = "none";
+
+        authSubmitBtn.innerText = "Entrar";
+
+        authToggleText.innerText =
+            "Não tem uma conta? Cadastre-se";
+
+    }else{
+
+        authTitle.innerText = "Criar Nova Conta";
+
+        nameGroup.style.display = "block";
+
+        authSubmitBtn.innerText = "Cadastrar";
+
+        authToggleText.innerText =
+            "Já possui uma conta? Faça Login";
+    }
+
+});
+
+/* LOGIN */
+authSubmitBtn.addEventListener('click',async()=>{
+
+    const email =
+        authEmail.value.trim();
+
+    const password =
+        authPassword.value;
+
+    const name =
+        authName.value.trim();
+
+    authError.style.display = 'none';
+
+    if(!email || !password || (!isLoginMode && !name)){
+
+        showError("Por favor, preencha todos os campos.");
+
+        return;
+    }
+
+    authSubmitBtn.disabled = true;
+
+    authSubmitBtn.innerText =
+        isLoginMode
+        ? "Entrando..."
+        : "Cadastrando...";
+
+    acaoDoBotaoAtiva = true;
+
+    try{
+
+        if(isLoginMode){
+
+            await signInWithEmailAndPassword(
+                auth,
+                email,
+                password
             );
 
-            if (confirmar) {
-                messagesWindow.innerHTML = '';
-                selectedMessage = null;
-            }
+        }else{
 
-            dropdownMenu.classList.remove('active');
-        });
+            const userCredential =
+                await createUserWithEmailAndPassword(
+                    auth,
+                    email,
+                    password
+                );
 
-        // Alternar Login/Cadastro
-        authToggleText.addEventListener('click', () => {
-
-            isLoginMode = !isLoginMode;
-            authError.style.display = 'none';
-
-            if (isLoginMode) {
-
-                authTitle.innerText = "Entrar no Chatro";
-                nameGroup.style.display = "none";
-                authSubmitBtn.innerText = "Entrar";
-                authToggleText.innerText = "Não tem uma conta? Cadastre-se";
-
-            } else {
-
-                authTitle.innerText = "Criar Nova Conta";
-                nameGroup.style.display = "block";
-                authSubmitBtn.innerText = "Cadastrar";
-                authToggleText.innerText = "Já possui uma conta? Faça Login";
-            }
-        });
-
-        // Login/Cadastro
-        authSubmitBtn.addEventListener('click', async () => {
-
-            const email = authEmail.value.trim();
-            const password = authPassword.value;
-            const name = authName.value.trim();
-
-            authError.style.display = 'none';
-
-            if (!email || !password || (!isLoginMode && !name)) {
-                showError("Por favor, preencha todos os campos.");
-                return;
-            }
-
-            authSubmitBtn.disabled = true;
-            authSubmitBtn.innerText = isLoginMode
-                ? "Entrando..."
-                : "Cadastrando...";
-
-            acaoDoBotaoAtiva = true;
-
-            try {
-
-                if (isLoginMode) {
-
-                    await signInWithEmailAndPassword(auth, email, password);
-
-                } else {
-
-                    const userCredential =
-                        await createUserWithEmailAndPassword(
-                            auth,
-                            email,
-                            password
-                        );
-
-                    await updateProfile(userCredential.user, {
-                        displayName: name
-                    });
+            await updateProfile(
+                userCredential.user,
+                {
+                    displayName:name
                 }
-
-                authEmail.value = '';
-                authPassword.value = '';
-                authName.value = '';
-
-            } catch (error) {
-
-                acaoDoBotaoAtiva = false;
-
-                showError(translateError(error.code));
-
-                authSubmitBtn.disabled = false;
-
-                authSubmitBtn.innerText =
-                    isLoginMode ? "Entrar" : "Cadastrar";
-            }
-        });
-
-        function showError(msg) {
-            authError.innerText = msg;
-            authError.style.display = 'block';
+            );
         }
 
-        function translateError(code) {
+        authEmail.value = '';
+        authPassword.value = '';
+        authName.value = '';
 
-            switch(code) {
+    }catch(error){
 
-                case 'auth/invalid-credential':
-                    return "E-mail ou senha incorretos.";
+        acaoDoBotaoAtiva = false;
 
-                case 'auth/email-already-in-use':
-                    return "Este e-mail já está em uso.";
+        showError(
+            translateError(error.code)
+        );
 
-                case 'auth/weak-password':
-                    return "A senha deve ter pelo menos 6 dígitos.";
+        authSubmitBtn.disabled = false;
 
-                case 'auth/invalid-email':
-                    return "Formato de e-mail inválido.";
+        authSubmitBtn.innerText =
+            isLoginMode
+            ? "Entrar"
+            : "Cadastrar";
+    }
 
-                default:
-                    return "Ocorreu um erro. Tente novamente.";
-            }
-        }
+});
 
-        // Monitor Auth
-        onAuthStateChanged(auth, (user) => {
+function showError(msg){
 
-            if (user) {
+    authError.innerText = msg;
 
-                if (acaoDoBotaoAtiva) {
+    authError.style.display = 'block';
 
-                    currentUser = user;
+}
 
-                    authOverlay.style.display = 'none';
+function translateError(code){
 
-                    chatContainer.style.display = 'flex';
+    switch(code){
 
-                    startChatListener();
+        case 'auth/invalid-credential':
+            return "E-mail ou senha incorretos.";
 
-                } else {
+        case 'auth/email-already-in-use':
+            return "Este e-mail já está em uso.";
 
-                    signOut(auth);
-                }
+        case 'auth/weak-password':
+            return "A senha deve ter pelo menos 6 dígitos.";
 
-            } else {
+        case 'auth/invalid-email':
+            return "Formato de e-mail inválido.";
 
-                currentUser = null;
+        default:
+            return "Ocorreu um erro. Tente novamente.";
+    }
 
-                chatContainer.style.display = 'none';
+}
 
-                authOverlay.style.display = 'flex';
+/* AUTH */
+onAuthStateChanged(auth,(user)=>{
 
-                authSubmitBtn.disabled = false;
+    if(user){
 
-          authSubmitBtn.innerText =
-                    isLoginMode ? "Entrar" : "Cadastrar";
+        if(acaoDoBotaoAtiva){
 
-                if (unsubscribeSnapshot) unsubscribeSnapshot();
+            currentUser = user;
 
-                messagesWindow.innerHTML = '';
-            }
-        });
+            authOverlay.style.display = 'none';
 
-        // Logout
-        logoutButton.addEventListener('click', () => {
+            chatContainer.style.display = 'flex';
 
-            acaoDoBotaoAtiva = false;
+            startChatListener();
+
+        }else{
 
             signOut(auth);
-        });
+        }
 
-        // Chat tempo real
-        function startChatListener() {
+    }else{
 
-            const q = query(
-                collection(db, "messages"),
-                orderBy("timestamp", "asc")
+        currentUser = null;
+
+        chatContainer.style.display = 'none';
+
+        authOverlay.style.display = 'flex';
+
+        authSubmitBtn.disable=
+            isLoginMode
+            ? "Entrar"
+            : "Cadastrar";
+
+        if(unsubscribeSnapshot)
+            unsubscribeSnapshot();
+
+        messagesWindow.innerHTML = '';
+    }
+
+});
+
+/* SAIR */
+logoutButton.addEventListener('click',()=>{
+
+    acaoDoBotaoAtiva = false;
+
+    signOut(auth);
+
+});
+
+/* CHAT */
+function startChatListener(){
+
+    const q = query(
+        collection(db,"messages"),
+        orderBy("timestamp","asc")
+    );
+
+    unsubscribeSnapshot = onSnapshot(q,(snapshot)=>{
+
+        messagesWindow.innerHTML = '';
+
+        snapshot.forEach((doc)=>{
+
+            const data = doc.data();
+
+            const messageDiv =
+                document.createElement('div');
+
+            messageDiv.classList.add('message');
+
+            let pressTimer;
+
+            /* LONG PRESS */
+            messageDiv.addEventListener(
+                'touchstart',
+                ()=>{
+
+                    pressTimer = setTimeout(()=>{
+
+                        document
+                        .querySelectorAll('.message')
+                        .forEach(msg=>
+                            msg.classList.remove('selected')
+                        );
+
+                        messageDiv.classList.add('selected');
+
+                        selectedMessage = messageDiv;
+
+                    },500);
+
+                }
             );
 
-            unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+            messageDiv.addEventListener(
+                'touchend',
+                ()=>{
 
-                messagesWindow.innerHTML = '';
+                    clearTimeout(pressTimer);
 
-                snapshot.forEach((doc) => {
+                }
+            );
 
-                    const data = doc.data();
+            if(data.senderId === currentUser.uid){
 
-                    const messageDiv =
-                        document.createElement('div');
+                messageDiv.classList.add('sent');
 
-                    messageDiv.classList.add('message');
+            }else{
 
-                    // LONG PRESS
-                    let pressTimer;
+                messageDiv.classList.add('received');
 
-                    messageDiv.addEventListener('touchstart', () => {
+                const nameSpan =
+                    document.createElement('span');
 
-                        pressTimer = setTimeout(() => {
+                nameSpan.classList.add('sender-tag');
 
-                            document.querySelectorAll('.message')
-                                .forEach(msg =>
-                                    msg.classList.remove('selected')
-                                );
+                nameSpan.innerText =
+                    data.senderName || "Usuário";
 
-                            messageDiv.classList.add('selected');
+                messageDiv.appendChild(nameSpan);
 
-                            selectedMessage = messageDiv;
-
-                        }, 500);
-
-                    });
-
-                    messageDiv.addEventListener('touchend', () => {
-                        clearTimeout(pressTimer);
-                    });
-
-                    messageDiv.addEventListener('mousedown', () => {
-
-                        pressTimer = setTimeout(() => {
-
-                            document.querySelectorAll('.message')
-                                .forEach(msg =>
-                                    msg.classList.remove('selected')
-                                );
-
-                            messageDiv.classList.add('selected');
-
-                            selectedMessage = messageDiv;
-
-                        }, 500);
-
-                    });
-
-                    messageDiv.addEventListener('mouseup', () => {
-                        clearTimeout(pressTimer);
-                    });
-
-                    if (data.senderId === currentUser.uid) {
-
-                        messageDiv.classList.add('sent');
-
-                    } else {
-
-                        messageDiv.classList.add('received');
-
-                        const nameSpan =
-                            document.createElement('span');
-
-                        nameSpan.classList.add('sender-tag');
-
-                        nameSpan.innerText =
-                            data.senderName || "Usuário";
-
-                        messageDiv.appendChild(nameSpan);
-                    }
-
-                    const textNode =
-                        document.createTextNode(data.text);
-
-                    messageDiv.appendChild(textNode);
-
-                    const timeSpan =
-                        document.createElement('span');
-
-                    timeSpan.classList.add('message-time');
-
-                    if (data.timestamp) {
-
-                        timeSpan.innerText =
-                            data.timestamp.toDate()
-                            .toLocaleTimeString(
-                                'pt-BR',
-                                {
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                }
-                            );
-                    }
-
-                    messageDiv.appendChild(timeSpan);
-
-                    messagesWindow.appendChild(messageDiv);
-                });
-
-                messagesWindow.scrollTop =
-                    messagesWindow.scrollHeight;
-            });
-        }
-
-        // Enviar mensagem
-        async function sendMessage() {
-
-            const messageText = messageInput.value.trim();
-
-            if (messageText === '' || !currentUser) return;
-
-            try {
-
-                await addDoc(collection(db, "messages"), {
-
-                    text: messageText,
-
-                    senderId: currentUser.uid,
-
-                    senderName:
-                        currentUser.displayName
-                        || currentUser.email.split('@')[0],
-
-                    timestamp: serverTimestamp()
-                });
-
-                messageInput.value = '';
-
-            } catch (error) {
-
-                console.error("Erro ao enviar: ", error);
             }
-        }
 
-        sendButton.addEventListener('click', sendMessage);
+            const textNode =
+                document.createTextNode(data.text);
 
-        messageInput.addEventListener('keypress', (e) => {
+            messageDiv.appendChild(textNode);
 
-            if (e.key === 'Enter') sendMessage();
+            const timeSpan =
+                document.createElement('span');
+
+            timeSpan.classList.add('message-time');
+
+            if(data.timestamp){
+
+                timeSpan.innerText =
+                    data.timestamp
+                    .toDate()
+                    .toLocaleTimeString(
+                        'pt-BR',
+                        {
+                            hour:'2-digit',
+                            minute:'2-digit'
+                        }
+                    );
+            }
+
+            messageDiv.appendChild(timeSpan);
+
+            messagesWindow.appendChild(messageDiv);
+
         });
 
-    </script>
+        messagesWindow.scrollTop =
+            messagesWindow.scrollHeight;
+
+    });
+
+}
+
+/* ENVIAR */
+async function sendMessage(){
+
+    const messageText =
+        messageInput.value.trim();
+
+    if(messageText === '' || !currentUser)
+        return;
+
+    try{
+
+        await addDoc(
+            collection(db,"messages"),
+            {
+                text:messageText,
+
+                senderId:currentUser.uid,
+
+                senderName:
+                    currentUser.displayName
+                    || currentUser.email.split('@')[0],
+
+                timestamp:serverTimestamp()
+            }
+        );
+
+        messageInput.value = '';
+
+    }catch(error){
+
+        console.error(
+            "Erro ao enviar:",
+            error
+        );
+    }
+
+}
+
+sendButton.addEventListener(
+    'click',
+    sendMessage
+);
+
+messageInput.addEventListener(
+    'keydown',
+    (e)=>{
+
+        if(e.key === 'Enter'){
+
+            sendMessage();
+        }
+
+    }
+);
+
+</script>
 
 </body>
 </html>
+
+        
