@@ -198,7 +198,7 @@
                 <div class="menu-container">
                     <button class="menu-btn" id="menu-btn">⋮</button>
                     <div class="dropdown-menu" id="dropdown-menu">
-                        <div class="menu-item" id="delete-selected-btn">Apagar do meu visor</div>
+                        <div class="menu-item" id="delete-selected-btn">Apagar do meu visor (Ref.)</div>
                         <div class="menu-item" id="clear-chat-local-btn">Limpar mensagens apenas para mim</div>
                         <div class="menu-item menu-danger" id="clear-chat-btn">Apagar tudo por completo (Banco)</div>
                     </div>
@@ -234,325 +234,267 @@
             appId: "1:619166274157:web:35f8210256dbd73d58e564"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        const app = initializeApp(firebaseConfig), auth = getAuth(app), db = getFirestore(app);
 
-        // Captura direta dos elementos para evitar atrasos na leitura do DOM
-        const authOverlay = document.getElementById('auth-overlay');
-        const appContainer = document.getElementById('app-container');
-        const contactsScreen = document.getElementById('contacts-screen');
-        const chatScreen = document.getElementById('chat-screen');
-        const chatList = document.getElementById('chat-list');
-        const messagesWindow = document.getElementById('messages-window');
-        const messageInput = document.getElementById('message-input');
-        const sendButton = document.getElementById('send-button');
-        const logoutButton = document.getElementById('logout-button');
-        const backButton = document.getElementById('back-button');
-        const currentChatName = document.getElementById('current-chat-name');
-        const currentChatAvatar = document.getElementById('current-chat-avatar');
-        const menuBtn = document.getElementById('menu-btn');
-        const dropdownMenu = document.getElementById('dropdown-menu');
-        const deleteSelectedBtn = document.getElementById('delete-selected-btn');
-        const clearChatLocalBtn = document.getElementById('clear-chat-local-btn');
-        const clearChatBtn = document.getElementById('clear-chat-btn');
-        const authTitle = document.getElementById('auth-title');
-        const nameGroup = document.getElementById('name-group');
-        const authEmail = document.getElementById('auth-email');
-        const authPassword = document.getElementById('auth-password');
-        const authName = document.getElementById('auth-name');
-        const authSubmitBtn = document.getElementById('auth-submit-btn');
-        const authToggleText = document.getElementById('auth-toggle-text');
-        const authError = document.getElementById('auth-error');
-        const userAvatar = document.getElementById('user-avatar');
-        const userDisplayName = document.getElementById('user-display-name');
-        const cModal = document.getElementById('custom-modal');
-        const mTitle = document.getElementById('modal-title');
-        const mText = document.getElementById('modal-text');
-        const mButtons = document.getElementById('modal-buttons');
+        let isLoginMode = true, currentUser = null, activeChatUser = null, unsubscribeSnapshot = null, 
+            unsubscribeUsers = null, selectedMessageElement = null;
 
-        let isLoginMode = true;
-        let currentUser = null;
-        let activeChatUser = null;
-        let unsubscribeSnapshot = null;
-        let unsubscribeUsers = null;
-        let selectedMessageElement = null;
+        document.addEventListener("DOMContentLoaded", () => {
+            const $ = e => document.getElementById(e),
+                authOverlay = $('auth-overlay'), appContainer = $('app-container'), contactsScreen = $('contacts-screen'),
+                chatScreen = $('chat-screen'), chatList = $('chat-list'), messagesWindow = $('messages-window'),
+                messageInput = $('message-input'), sendButton = $('send-button'), logoutButton = $('logout-button'),
+                backButton = $('back-button'), currentChatName = $('current-chat-name'), currentChatAvatar = $('current-chat-avatar'),
+                menuBtn = $('menu-btn'), dropdownMenu = $('dropdown-menu'), deleteSelectedBtn = $('delete-selected-btn'),
+                clearChatLocalBtn = $('clear-chat-local-btn'), clearChatBtn = $('clear-chat-btn'), authTitle = $('auth-title'),
+                nameGroup = $('name-group'), authEmail = $('auth-email'), authPassword = $('auth-password'),
+                authName = $('auth-name'), authSubmitBtn = $('auth-submit-btn'), authToggleText = $('auth-toggle-text'),
+                authError = $('auth-error'), userAvatar = $('user-avatar'), userDisplayName = $('user-display-name'),
+                cModal = $('custom-modal'), mTitle = $('modal-title'), mText = $('modal-text'), mButtons = $('modal-buttons');
 
-        function openModal(title, text, buttons) {
-            mTitle.innerText = title;
-            mText.innerText = text;
-            mButtons.innerHTML = "";
-            buttons.forEach(btn => {
-                const el = document.createElement("button");
-                el.className = `modal-btn ${btn.class}`;
-                el.innerText = btn.text;
-                el.onclick = () => {
-                    cModal.classList.remove("active");
-                    if(btn.action) btn.action();
-                };
-                mButtons.appendChild(el);
-            });
-            cModal.classList.add("active");
-        }
-
-        // Eventos de clique atribuídos globalmente no escopo do módulo
-        menuBtn.onclick = (e) => { 
-            e.stopPropagation(); 
-            dropdownMenu.classList.toggle("active"); 
-        };
-
-        document.onclick = (e) => { 
-            if(!e.target.closest(".menu-container")) dropdownMenu.classList.remove("active"); 
-        };
-
-        deleteSelectedBtn.onclick = async () => {
-            if (!selectedMessageElement) {
-                openModal("Seleção Necessária", "Por favor, selecione uma mensagem clicando longo nela primeiro.", [{ text: "Entendido", class: "modal-btn-primary" }]);
-                return;
+            function openModal(title, text, buttons) {
+                mTitle.innerText = title;
+                mText.innerText = text;
+                mButtons.innerHTML = "";
+                buttons.forEach(btn => {
+                    const el = document.createElement("button");
+                    el.className = `modal-btn ${btn.class}`;
+                    el.innerText = btn.text;
+                    el.onclick = () => {
+                        cModal.classList.remove("active");
+                        if(btn.action) btn.action();
+                    };
+                    mButtons.appendChild(el);
+                });
+                cModal.classList.add("active");
             }
-            const msgId = selectedMessageElement.getAttribute("data-id");
-            if (msgId && currentUser && activeChatUser) {
-                const roomId = getChatRoomId(currentUser.uid, activeChatUser.uid);
-                try {
-                    await deleteDoc(doc(db, "direct_messages", roomId, "messages", msgId));
-                    selectedMessageElement = null;
-                } catch (err) { console.error(err); }
-            }
-            dropdownMenu.classList.remove("active");
-        };
 
-        clearChatLocalBtn.onclick = () => {
-            if (activeChatUser && currentUser) {
-                openModal("Limpar Conversa", "Deseja ocultar as mensagens atuais da sua tela? O outro usuário continuará visualizando normalmente.", [
-                    { text: "Cancelar", class: "modal-btn-secondary" },
-                    { text: "Limpar para mim", class: "modal-btn-primary", action: () => {
-                        const roomId = getChatRoomId(currentUser.uid, activeChatUser.uid);
-                        localStorage.setItem(“clear_marker_" + currentUser.uid + "_" + roomId, Date.now().toString());
-                        messagesWindow.innerHTML = "";
+            menuBtn.addEventListener("click", e => { e.stopPropagation(); dropdownMenu.classList.toggle("active"); });
+            document.addEventListener("click", e => { if(!e.target.closest(".menu-container")) dropdownMenu.classList.remove("active"); });
+
+            deleteSelectedBtn.addEventListener("click", async () => {
+                if (!selectedMessageElement) {
+                    openModal("Seleção Necessária", "Por favor, dê um toque longo em uma mensagem para selecioná-la primeiro.", [{ text: "Entendido", class: "modal-btn-primary" }]);
+                    return;
+                }
+                const msgId = selectedMessageElement.getAttribute("data-id");
+                if (msgId && currentUser && activeChatUser) {
+                    const roomId = getChatRoomId(currentUser.uid, activeChatUser.uid);
+                    try {
+                        await deleteDoc(doc(db, "direct_messages", roomId, "messages", msgId));
                         selectedMessageElement = null;
-                    }}
-                ]);
-            }
-            dropdownMenu.classList.remove("active");
-        };
+                    } catch (err) { console.error(err); }
+                }
+                dropdownMenu.classList.remove("active");
+            });
 
-        clearChatBtn.onclick = async () => {
-            if (activeChatUser && currentUser) {
-                openModal("Apagar para Todos", "ATENÇÃO: Deseja apagar permanentemente todas as mensagens desta conversa para ambos no servidor?", [
-                    { text: "Cancelar", class: "modal-btn-secondary" },
-                    { text: "Apagar tudo", class: "modal-btn-danger", action: async () => {
-                        const roomId = getChatRoomId(currentUser.uid, activeChatUser.uid);
-                        localStorage.removeItem("clear_marker_" + currentUser.uid + "_" + roomId);
-                        try {
-                            const snap = await getDocs(collection(db, "direct_messages", roomId, "messages"));
-                            snap.forEach(async docRef => {
-                                await deleteDoc(doc(db, "direct_messages", roomId, "messages", docRef.id));
-                            });
+            clearChatLocalBtn.addEventListener("click", () => {
+                if (activeChatUser && currentUser) {
+                    openModal("Limpar Conversa", "Deseja ocultar as mensagens atuais da sua tela? O outro usuário continuará visualizando o histórico completo normalmente.", [
+                        { text: "Cancelar", class: "modal-btn-secondary" },
+                        { text: "Limpar para mim", class: "modal-btn-primary", action: () => {
+                            const roomId = getChatRoomId(currentUser.uid, activeChatUser.uid);
+                            localStorage.setItem("clear_marker_" + currentUser.uid + "_" + roomId, Date.now().toString());
                             messagesWindow.innerHTML = "";
                             selectedMessageElement = null;
-                        } catch (err) { console.error(err); }
-                    }}
-                ]);
-            }
-            dropdownMenu.classList.remove("active");
-        };
-
-        authToggleText.onclick = () => {
-            isLoginMode = !isLoginMode;
-            authError.style.display = "none";
-            if (isLoginMode) {
-                authTitle.innerText = "Entrar no Chatro";
-                nameGroup.style.display = "none";
-                authSubmitBtn.innerText = "Entrar";
-                authToggleText.innerText = "Não tem uma conta? Cadastre-se";
-            } else {
-                authTitle.innerText = "Criar Nova Conta";
-                nameGroup.style.display = "block";
-                authSubmitBtn.innerText = "Cadastrar";
-                authToggleText.innerText = "Já possui uma conta? Faça Login";
-            }
-        };
-
-        function showError(e) { authError.innerText = e; authError.style.display = "block"; }
-        
-        function translateError(e) {
-            switch(e){
-                case "auth/invalid-credential": case "auth/user-not-found": case "auth/wrong-password": return "E-mail ou senha incorretos.";
-                case "auth/email-already-in-use": return "Este e-mail já está em uso.";
-                case "auth/weak-password": return "A senha deve ter pelo menos 6 dígitos.";
-                case "auth/invalid-email": return "Formato de e-mail inválido.";
-                default: return "Ocorreu um erro. Tente novamente.";
-            }
-        }
-
-        authSubmitBtn.onclick = async () => {
-            const email = authEmail.value.trim();
-            const pass = authPassword.value;
-            const name = authName.value.trim();
-            
-            authError.style.display = "none";
-            if (!email || !pass || (!isLoginMode && !name)) {
-                return showError("Por favor, preencha todos os campos.");
-            }
-            
-            authSubmitBtn.disabled = true;
-            authSubmitBtn.innerText = isLoginMode ? "Entrando..." : "Cadastrando...";
-            
-            try {
-                if (isLoginMode) {
-                    await signInWithEmailAndPassword(auth, email, pass);
-                } else {
-                    const res = await createUserWithEmailAndPassword(auth, email, pass);
-                    await updateProfile(res.user, { displayName: name });
-                    await setDoc(doc(db, "users", res.user.uid), { uid: res.user.uid, name: name, email: email });
-                    currentUser = auth.currentUser;
-                    setupUserHeader();
+                        }}
+                    ]);
                 }
-                authEmail.value = ""; authPassword.value = ""; authName.value = "";
-            } catch (err) {
-                showError(translateError(err.code));
-                authSubmitBtn.disabled = false;
-                authSubmitBtn.innerText = isLoginMode ? "Entrar" : "Cadastrar";
-            }
-        };
-
-        function setupUserHeader() {
-            if (currentUser) {
-                const name = currentUser.displayName || currentUser.email.split("@")[0];
-                userDisplayName.innerText = name;
-                userAvatar.innerText = name.substring(0, 2).toUpperCase();
-                setDoc(doc(db, "users", currentUser.uid), { uid: currentUser.uid, name: name, email: currentUser.email }, { merge: true });
-            }
-        }
-
-        onAuthStateChanged(auth, user => {
-            if (user) {
-                currentUser = user; 
-                setupUserHeader();
-                authOverlay.style.display = "none"; 
-                appContainer.style.display = "block";
-                navigateToScreen("contacts"); 
-                startUsersListener();
-            } else {
-                currentUser = null; 
-                activeChatUser = null;
-                appContainer.style.display = "none"; 
-                authOverlay.style.display = "flex";
-                authSubmitBtn.disabled = false; 
-                authSubmitBtn.innerText = isLoginMode ? "Entrar" : "Cadastrar";
-                if(unsubscribeSnapshot) unsubscribeSnapshot();
-                if(unsubscribeUsers) unsubscribeUsers();
-                messagesWindow.innerHTML = ""; 
-                chatList.innerHTML = "";
-            }
-        });
-
-        logoutButton.onclick = () => signOut(auth);
-        backButton.onclick = () => navigateToScreen("contacts");
-
-        function navigateToScreen(scr) {
-            if (scr === "contacts") { 
-                chatScreen.classList.remove("active"); 
-                contactsScreen.classList.add("active"); 
-            } else { 
-                contactsScreen.classList.remove("active"); 
-                chatScreen.classList.add("active"); 
-            }
-        }
-
-        function startUsersListener() {
-            const q = query(collection(db, "users"));
-            unsubscribeUsers = onSnapshot(q, snap => {
-                chatList.innerHTML = "";
-                snap.forEach(d => {
-                    const u = d.data();
-                    if (u.uid !== currentUser.uid) {
-                        const item = document.createElement("div");
-                        item.classList.add("chat-item");
-                        const initial = u.name ? u.name.substring(0, 2).toUpperCase() : "U";
-                        item.innerHTML = `<div class="avatar">${initial}</div><div class="chat-info"><div class="chat-name">${u.name || "Usuário"}</div><div class="chat-last-msg">Toque para abrir a conversa</div></div>`;
-                        item.onclick = () => selectChat(u);
-                        chatList.appendChild(item);
-                    }
-                });
+                dropdownMenu.classList.remove("active");
             });
-        }
 
-        function selectChat(user) {
-            activeChatUser = user;
-            currentChatName.innerText = user.name;
-            currentChatAvatar.innerText = user.name.substring(0, 2).toUpperCase();
-            navigateToScreen("chat");
-            startChatListener();
-        }
+            clearChatBtn.addEventListener("click", () => {
+                if (activeChatUser && currentUser) {
+                    openModal("Apagar para Todos", "ATENÇÃO: Deseja apagar permanentemente todas as mensagens desta conversa para AMBOS os usuários no servidor? Esta ação não pode ser desfeita.", [
+                        { text: "Cancelar", class: "modal-btn-secondary" },
+                        { text: "Apagar tudo", class: "modal-btn-danger", action: async () => {
+                            const roomId = getChatRoomId(currentUser.uid, activeChatUser.uid);
+                            localStorage.removeItem("clear_marker_" + currentUser.uid + "_" + roomId);
+                            try {
+                                const snap = await getDocs(collection(db, "direct_messages", roomId, "messages"));
+                                snap.forEach(async docRef => {
+                                    await deleteDoc(doc(db, "direct_messages", roomId, "messages", docRef.id));
+                                });
+                                messagesWindow.innerHTML = "";
+                                selectedMessageElement = null;
+                            } catch (err) { console.error(err); }
+                        }}
+                    ]);
+                }
+                dropdownMenu.classList.remove("active");
+            });
 
-        function getChatRoomId(a, b) { return a < b ? `${a}_${b}` : `${b}_${a}`; }
+            authToggleText.addEventListener("click", () => {
+                isLoginMode = !isLoginMode;
+                authError.style.display = "none";
+                if (isLoginMode) {
+                    authTitle.innerText = "Entrar no Chatro";
+                    nameGroup.style.display = "none";
+                    authSubmitBtn.innerText = "Entrar";
+                    authToggleText.innerText = "Não tem uma conta? Cadastre-se";
+                } else {
+                    authTitle.innerText = "Criar Nova Conta";
+                    nameGroup.style.display = "block";
+                    authSubmitBtn.innerText = "Cadastrar";
+                    authToggleText.innerText = "Já possui uma conta? Faça Login";
+                }
+            });
 
-        function startChatListener() {
-            if (activeChatUser && currentUser) {
-                const roomId = getChatRoomId(currentUser.uid, activeChatUser.uid);
-                const q = query(collection(db, "direct_messages", roomId, "messages"), orderBy("timestamp", "asc"));
-                if(unsubscribeSnapshot) unsubscribeSnapshot();
-                unsubscribeSnapshot = onSnapshot(q, snap => {
-                    messagesWindow.innerHTML = "";
-                    const marker = localStorage.getItem("clear_marker_" + currentUser.uid + "_" + roomId);
-                    const timeLimit = marker ? parseInt(marker, 10) : 0;
-                    
-                    snap.forEach(d => {
-                        const msg = d.data();
-                        if (msg.timestamp) {
-                            if (msg.timestamp.toDate().getTime() <= timeLimit) return;
-                        } else if (timeLimit > 0) return;
-                        
-                        const box = document.createElement("div");
-                        box.classList.add("message");
-                        box.setAttribute("data-id", d.id);
-                        box.classList.add(msg.senderId === currentUser.uid ? "sent" : "received");
-                        
-                        let tOut;
-                        const selectFn = () => {
-                            document.querySelectorAll(".message").forEach(m => m.classList.remove("selected"));
-                            box.classList.add("selected");
-                            selectedMessageElement = box;
-                        };
-                        box.addEventListener("touchstart", () => tOut = setTimeout(selectFn, 600));
-                        box.addEventListener("touchend", () => clearTimeout(tOut));
-                        box.addEventListener("contextmenu", e => { e.preventDefault(); selectFn(); });
-                        
-                        box.appendChild(document.createTextNode(msg.text));
-                        const meta = document.createElement("span"); meta.className = "message-meta";
-                        const time = document.createElement("span"); time.className = "message-time";
-                        time.innerText = msg.timestamp ? msg.timestamp.toDate().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "...";
-                        meta.appendChild(time); box.appendChild(meta);
-                        messagesWindow.appendChild(box);
-                    });
-                    messagesWindow.scrollTop = messagesWindow.scrollHeight;
-                });
-            }
-        }
-
-        async function sendMessage() {
-            const text = messageInput.value.trim();
-            if (text !== "" && currentUser && activeChatUser) {
-                const cache = text; 
-                messageInput.value = "";
-                const roomId = getChatRoomId(currentUser.uid, activeChatUser.uid);
-                try {
-                    await addDoc(collection(db, "direct_messages", roomId, "messages"), {
-                        text: cache,
-                        senderId: currentUser.uid,
-                        senderName: currentUser.displayName || currentUser.email.split("@")[0],
-                        timestamp: serverTimestamp()
-                    });
-                } catch (err) { 
-                    console.error(err); 
-                    messageInput.value = cache; 
+            function showError(e) { authError.innerText = e; authError.style.display = "block"; }
+            function translateError(e) {
+                switch(e){
+                    case "auth/invalid-credential": case "auth/user-not-found": case "auth/wrong-password": return "E-mail ou senha incorretos.";
+                    case "auth/email-already-in-use": return "Este e-mail já está em uso.";
+                    case "auth/weak-password": return "A senha deve ter pelo menos 6 dígitos.";
+                    case "auth/invalid-email": return "Formato de e-mail inválido.";
+                    default: return "Ocorreu um erro. Tente novamente.";
                 }
             }
-        }
 
-        sendButton.onclick = sendMessage;
-        messageInput.addEventListener("keydown", e => { if(e.key === "Enter") sendMessage(); });
+            authSubmitBtn.addEventListener("click", async () => {
+                const email = authEmail.value.trim(), pass = authPassword.value, name = authName.value.trim();
+                if (authError.style.display = "none", !email || !pass || !isLoginMode && !name) return showError("Por favor, preencha todos os campos.");
+                authSubmitBtn.disabled = true;
+                authSubmitBtn.innerText = isLoginMode ? "Entrando..." : "Cadastrando...";
+                try {
+                    if (isLoginMode) await signInWithEmailAndPassword(auth, email, pass);
+                    else {
+                        const res = await createUserWithEmailAndPassword(auth, email, pass);
+                        await updateProfile(res.user, { displayName: name });
+                        await setDoc(doc(db, "users", res.user.uid), { uid: res.user.uid, name: name, email: email });
+                        currentUser = auth.currentUser;
+                        setupUserHeader();
+                    }
+                    authEmail.value = ""; authPassword.value = ""; authName.value = "";
+                } catch (err) {
+                    showError(translateError(err.code));
+                    authSubmitBtn.disabled = false;
+                    authSubmitBtn.innerText = isLoginMode ? "Entrar" : "Cadastrar";
+                }
+            });
+
+            function setupUserHeader() {
+                if (currentUser) {
+                    const name = currentUser.displayName || currentUser.email.split("@")[0];
+                    userDisplayName.innerText = name;
+                    userAvatar.innerText = name.substring(0, 2).toUpperCase();
+                    setDoc(doc(db, "users", currentUser.uid), { uid: currentUser.uid, name: name, email: currentUser.email }, { merge: true });
+                }
+            }
+
+            onAuthStateChanged(auth, user => {
+                if (user) {
+                    currentUser = user; setupUserHeader();
+                    authOverlay.style.display = "none"; appContainer.style.display = "block";
+                    navigateToScreen("contacts"); startUsersListener();
+                } else {
+                    currentUser = null; activeChatUser = null;
+                    appContainer.style.display = "none"; authOverlay.style.display = "flex";
+                    authSubmitBtn.disabled = false; authSubmitBtn.innerText = isLoginMode ? "Entrar" : "Cadastrar";
+                    if(unsubscribeSnapshot) unsubscribeSnapshot();
+                    if(unsubscribeUsers) unsubscribeUsers();
+                    messagesWindow.innerHTML = ""; chatList.innerHTML = "";
+                }
+            });
+
+            logoutButton.addEventListener("click", () => signOut(auth));
+            backButton.addEventListener("click", () => navigateToScreen("contacts"));
+
+            function navigateToScreen(scr) {
+                if (scr === "contacts") { chatScreen.classList.remove("active"); contactsScreen.classList.add("active"); }
+                else { contactsScreen.classList.remove("active"); chatScreen.classList.add("active"); }
+            }
+
+            function startUsersListener() {
+                const q = query(collection(db, "users"));
+                unsubscribeUsers = onSnapshot(q, snap => {
+                    chatList.innerHTML = "";
+                    snap.forEach(d => {
+                        const u = d.data();
+                        if (u.uid !== currentUser.uid) {
+                            const item = document.createElement("div");
+                            item.classList.add("chat-item");
+                            const initial = u.name ? u.name.substring(0, 2).toUpperCase() : "U";
+                            item.innerHTML = `<div class="avatar">${initial}</div><div class="chat-info"><div class="chat-name">${u.name || "Usuário"}</div><div class="chat-last-msg">Toque para abrir a conversa</div></div>`;
+                            item.onclick = () => selectChat(u);
+                            chatList.appendChild(item);
+                        }
+                    });
+                });
+            }
+
+            function selectChat(user) {
+                activeChatUser = user;
+                currentChatName.innerText = user.name;
+                currentChatAvatar.innerText = user.name.substring(0, 2).toUpperCase();
+                navigateToScreen("chat");
+                startChatListener();
+            }
+
+            function getChatRoomId(a, b) { return a < b ? `${a}_${b}` : `${b}_${a}`; }
+
+            function startChatListener() {
+                if (activeChatUser && currentUser) {
+                    const roomId = getChatRoomId(currentUser.uid, activeChatUser.uid);
+                    const q = query(collection(db, "direct_messages", roomId, "messages"), orderBy("timestamp", "asc"));
+                    if(unsubscribeSnapshot) unsubscribeSnapshot();
+                    unsubscribeSnapshot = onSnapshot(q, snap => {
+                        messagesWindow.innerHTML = "";
+                        const marker = localStorage.getItem("clear_marker_" + currentUser.uid + "_" + roomId);
+                        const timeLimit = marker ? parseInt(marker, 10) : 0;
+                        
+                        snap.forEach(d => {
+                            const msg = d.data();
+                            if (msg.timestamp) {
+                                if (msg.timestamp.toDate().getTime() <= timeLimit) return;
+                            } else if (timeLimit > 0) return;
+                            
+                            const box = document.createElement("div");
+                            box.classList.add("message");
+                            box.setAttribute("data-id", d.id);
+                            box.classList.add(msg.senderId === currentUser.uid ? "sent" : "received");
+                            
+                            let tOut;
+                            const selectFn = () => {
+                                document.querySelectorAll(".message").forEach(m => m.classList.remove("selected"));
+                                box.classList.add("selected");
+                                selectedMessageElement = box;
+                            };
+                            box.addEventListener("touchstart", () => tOut = setTimeout(selectFn, 600));
+                            box.addEventListener("touchend", () => clearTimeout(tOut));
+                            box.addEventListener("contextmenu", e => { e.preventDefault(); selectFn(); });
+                            
+                            box.appendChild(document.createTextNode(msg.text));
+                            const meta = document.createElement("span"); meta.className = "message-meta";
+                            const time = document.createElement("span"); time.className = "message-time";
+                            time.innerText = msg.timestamp ? msg.timestamp.toDate().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "...";
+                            meta.appendChild(time); box.appendChild(meta);
+                            messagesWindow.appendChild(box);
+                        });
+                        messagesWindow.scrollTop = messagesWindow.scrollHeight;
+                    });
+                }
+            }
+
+            async function sendMessage() {
+                const text = messageInput.value.trim();
+                if (text !== "" && currentUser && activeChatUser) {
+                    const cache = text; messageInput.value = "";
+                    const roomId = getChatRoomId(currentUser.uid, activeChatUser.uid);
+                    try {
+                        await addDoc(collection(db, "direct_messages", roomId, "messages"), {
+                            text: cache,
+                            senderId: currentUser.uid,
+                            senderName: currentUser.displayName || currentUser.email.split("@")[0],
+                            timestamp: serverTimestamp()
+                        });
+                    } catch (err) { console.error(err); messageInput.value = cache; }
+                }
+            }
+
+            sendButton.addEventListener("click", sendMessage);
+            messageInput.addEventListener("keydown", e => { if(e.key === "Enter") sendMessage(); });
+        });
     </script>
 </body>
 </html>
