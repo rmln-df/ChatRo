@@ -25,9 +25,6 @@
         #chat-screen::before{content:"";position:absolute;top:0;left:0;width:100%;height:100%;opacity:.12;background-image:url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');filter:invert(1);pointer-events:none}
         .screen-header{background:var(--wa-header);color:var(--wa-text-main);display:flex;align-items:center;justify-content:space-between;padding:10px 16px;height:60px;flex-shrink:0;box-shadow:0 2px 4px rgba(0,0,0,.2);z-index:5}
         .user-profile{display:flex;align-items:center;gap:10px;font-size:.95rem;font-weight:600}
-        .logout-btn{background:transparent;border:1px solid rgba(255,255,255,.15);color:var(--wa-text-muted);padding:6px 12px;border-radius:20px;cursor:pointer;font-size:.85rem}
-        .logout-btn:hover{color:#ff8a80;border-color:#ff8a80}
-        .delete-account-btn{background:transparent;border:none;color:#ff8a80;font-size:.8rem;cursor:pointer;text-decoration:underline;margin-top:5px;display:block}
         .chat-list{flex:1;overflow-y:auto;background:var(--wa-sidebar-bg)}
         .chat-item{display:flex;align-items:center;padding:14px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.03);position:relative}
         .chat-item:hover{background:rgba(255,255,255,.03)}
@@ -84,12 +81,15 @@
             <header class="screen-header">
                 <div class="user-profile">
                     <div class="avatar" id="user-avatar" style="width:35px;height:35px;font-size:0.9rem;margin-right:5px;background:var(--wa-teal)">U</div>
-                    <div>
-                        <span id="user-display-name">Carregando...</span>
-                        <button class="delete-account-btn" id="delete-account-button">Excluir minha conta</button>
+                    <span id="user-display-name">Carregando...</span>
+                </div>
+                <div class="menu-container">
+                    <button class="menu-btn" id="main-menu-btn">⋮</button>
+                    <div class="dropdown-menu" id="main-dropdown-menu">
+                        <div class="menu-item" id="main-logout-btn">Sair da conta</div>
+                        <div class="menu-item menu-danger" id="main-delete-account-btn">Excluir minha conta</div>
                     </div>
                 </div>
-                <button class="logout-btn" id="logout-button">Sair</button>
             </header>
             <div class="chat-list" id="chat-list"></div>
         </section>
@@ -122,7 +122,10 @@
         };
 
         const app = initializeApp(firebaseConfig), auth = getAuth(app), db = getFirestore(app);
-        const authOverlay = document.getElementById('auth-overlay'), appContainer = document.getElementById('app-container'), contactsScreen = document.getElementById('contacts-screen'), chatScreen = document.getElementById('chat-screen'), chatList = document.getElementById('chat-list'), messagesWindow = document.getElementById('messages-window'), messageInput = document.getElementById('message-input'), sendButton = document.getElementById('send-button'), logoutButton = document.getElementById('logout-button'), backButton = document.getElementById('back-button'), currentChatName = document.getElementById('current-chat-name'), currentChatAvatar = document.getElementById('current-chat-avatar'), menuBtn = document.getElementById('menu-btn'), dropdownMenu = document.getElementById('dropdown-menu'), deleteSelectedBtn = document.getElementById('delete-selected-btn'), clearChatLocalBtn = document.getElementById('clear-chat-local-btn'), clearChatBtn = document.getElementById('clear-chat-btn'), authTitle = document.getElementById('auth-title'), nameGroup = document.getElementById('name-group'), authEmail = document.getElementById('auth-email'), authPassword = document.getElementById('auth-password'), authName = document.getElementById('auth-name'), authSubmitBtn = document.getElementById('auth-submit-btn'), authToggleText = document.getElementById('auth-toggle-text'), authError = document.getElementById('auth-error'), userAvatar = document.getElementById('user-avatar'), userDisplayName = document.getElementById('user-display-name'), cModal = document.getElementById('custom-modal'), mTitle = document.getElementById('modal-title'), mText = document.getElementById('modal-text'), mButtons = document.getElementById('modal-buttons'), deleteAccountButton = document.getElementById('delete-account-button');
+        const authOverlay = document.getElementById('auth-overlay'), appContainer = document.getElementById('app-container'), contactsScreen = document.getElementById('contacts-screen'), chatScreen = document.getElementById('chat-screen'), chatList = document.getElementById('chat-list'), messagesWindow = document.getElementById('messages-window'), messageInput = document.getElementById('message-input'), sendButton = document.getElementById('send-button'), backButton = document.getElementById('back-button'), currentChatName = document.getElementById('current-chat-name'), currentChatAvatar = document.getElementById('current-chat-avatar'), menuBtn = document.getElementById('menu-btn'), dropdownMenu = document.getElementById('dropdown-menu'), deleteSelectedBtn = document.getElementById('delete-selected-btn'), clearChatLocalBtn = document.getElementById('clear-chat-local-btn'), clearChatBtn = document.getElementById('clear-chat-btn'), authTitle = document.getElementById('auth-title'), nameGroup = document.getElementById('name-group'), authEmail = document.getElementById('auth-email'), authPassword = document.getElementById('auth-password'), authName = document.getElementById('auth-name'), authSubmitBtn = document.getElementById('auth-submit-btn'), authToggleText = document.getElementById('auth-toggle-text'), authError = document.getElementById('auth-error'), userAvatar = document.getElementById('user-avatar'), userDisplayName = document.getElementById('user-display-name'), cModal = document.getElementById('custom-modal'), mTitle = document.getElementById('modal-title'), mText = document.getElementById('modal-text'), mButtons = document.getElementById('modal-buttons');
+
+        // Novos mapeamentos da tela principal
+        const mainMainMenuBtn = document.getElementById('main-menu-btn'), mainDropdownMenu = document.getElementById('main-dropdown-menu'), mainLogoutBtn = document.getElementById('main-logout-btn'), mainDeleteAccountBtn = document.getElementById('main-delete-account-btn');
 
         let isLoginMode = true, currentUser = null, activeChatUser = null, unsubscribeSnapshot = null, unsubscribeUsers = null, selectedMessageElement = null;
         let globalActiveRooms = {}, initialRoomLoads = {};
@@ -130,12 +133,6 @@
         function requestNotificationPermission() {
             if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
                 Notification.requestPermission();
-            }
-        }
-
-        function sendSystemNotification(title, messageBody) {
-            if ("Notification" in window && Notification.permission === "granted") {
-                try { new Notification(title, { body: messageBody }); } catch(e) {}
             }
         }
         function playNotificationSound() {
@@ -167,8 +164,10 @@
             cModal.classList.add("active");
         }
 
-        menuBtn.onclick = (e) => { e.stopPropagation(); dropdownMenu.classList.toggle("active"); };
-        document.onclick = (e) => { if(!e.target.closest(".menu-container")) dropdownMenu.classList.remove("active"); };
+        // Eventos dos Menus Suspensos (Prevenindo conflitos)
+        mainMainMenuBtn.onclick = (e) => { e.stopPropagation(); dropdownMenu.classList.remove("active"); mainDropdownMenu.classList.toggle("active"); };
+        menuBtn.onclick = (e) => { e.stopPropagation(); mainDropdownMenu.classList.remove("active"); dropdownMenu.classList.toggle("active"); };
+        document.onclick = () => { mainDropdownMenu.classList.remove("active"); dropdownMenu.classList.remove("active"); };
 
         deleteSelectedBtn.onclick = async () => {
             if (!selectedMessageElement) { openModal("Seleção Necessária", "Por favor, selecione uma mensagem clicando longo nela primeiro.", [{ text: "Entendido", class: "modal-btn-primary" }]); return; }
@@ -177,7 +176,6 @@
                 const roomId = getChatRoomId(currentUser.uid, activeChatUser.uid);
                 try { await deleteDoc(doc(db, "direct_messages", roomId, "messages", msgId)); selectedMessageElement = null; } catch (err) { console.error(err); }
             }
-            dropdownMenu.classList.remove("active");
         };
 
         clearChatLocalBtn.onclick = () => {
@@ -190,7 +188,6 @@
                     }}
                 ]);
             }
-            dropdownMenu.classList.remove("active");
         };
 
         clearChatBtn.onclick = async () => {
@@ -207,10 +204,11 @@
                     }}
                 ]);
             }
-            dropdownMenu.classList.remove("active");
         };
 
-        deleteAccountButton.onclick = () => {
+        mainLogoutBtn.onclick = () => signOut(auth);
+
+        mainDeleteAccountBtn.onclick = () => {
             if (currentUser) {
                 openModal("Excluir Conta", "Tem certeza absoluta? Isso apagará seu perfil do banco de dados e removerá seu login. Essa ação não pode ser desfeita.", [
                     { text: "Cancelar", class: "modal-btn-secondary" },
@@ -273,7 +271,7 @@
             }
         });
 
-        logoutButton.onclick = () => signOut(auth); backButton.onclick = () => { activeChatUser = null; navigateToScreen("contacts"); };
+        backButton.onclick = () => { activeChatUser = null; navigateToScreen("contacts"); };
         function navigateToScreen(scr) { if (scr === "contacts") { chatScreen.classList.remove("active"); contactsScreen.classList.add("active"); } else { contactsScreen.classList.remove("active"); chatScreen.classList.add("active"); } }
 
         function startUsersListener() {
@@ -308,7 +306,6 @@
                 snap.forEach(d => { 
                     const msg = d.data();
                     lastMessageData = msg;
-                    // Se a mensagem foi enviada pelo outro usuário e está como não lida
                     if (msg.senderId === targetUser.uid && msg.read !== true) {
                         unreadCount++;
                     }
@@ -318,7 +315,6 @@
                     const label = document.getElementById(`last-msg-text-${targetUser.uid}`);
                     if (label) label.innerText = lastMessageData.text;
 
-                    // Atualiza dinamicamente a bola verde com a quantidade exata de pendências
                     const badge = document.getElementById(`badge-unread-${targetUser.uid}`);
                     if (badge) {
                         if (unreadCount > 0) {
@@ -331,7 +327,6 @@
 
                     if (initialRoomLoads[roomId] && lastMessageData.senderId !== currentUser.uid) {
                         if (!activeChatUser || activeChatUser.uid !== targetUser.uid) {
-                            // Toca o som APENAS para quem está recebendo fora da sala ativa
                             playNotificationSound();
                             triggerVisualAlert();
                             sendSystemNotification(`Mensagem de ${targetUser.name}`, lastMessageData.text);
@@ -365,7 +360,6 @@
             const badge = document.getElementById(`badge-unread-${user.uid}`);
             if (badge) badge.style.display = "none";
             
-            // Assim que abre a sala, limpa as notificações e atualiza no servidor que você leu
             markRoomAsRead(user.uid);
             navigateToScreen("chat"); 
             startChatListener(); 
@@ -390,7 +384,6 @@
                         
                         if (msg.senderId !== currentUser.uid) {
                             incomingNew = true;
-                            // Se estou dentro do chat e recebo novas mensagens, guardo para atualizar o check de leitura
                             if (msg.read !== true) recordsToMarkRead.push(d.id);
                         }
                         
@@ -403,15 +396,14 @@
                         time.innerText = msg.timestamp ? msg.timestamp.toDate().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "...";
                         meta.appendChild(time); 
                         
-                        // Sistema de confirmação visual: Adiciona o traço cinza ou verde apenas nas mensagens enviadas
                         if (msg.senderId === currentUser.uid) {
                             const statusIndicator = document.createElement("span");
                             if (msg.read === true) {
                                 statusIndicator.className = "message-status read";
-                                statusIndicator.innerText = "✓"; // Lido (Verde)
+                                statusIndicator.innerText = "✓";
                             } else {
                                 statusIndicator.className = "message-status unread";
-                                statusIndicator.innerText = "✓"; // Não lido (Cinza)
+                                statusIndicator.innerText = "✓";
                             }
                             meta.appendChild(statusIndicator);
                         }
@@ -419,7 +411,6 @@
                         box.appendChild(meta); messagesWindow.appendChild(box);
                     });
                     
-                    // Atualiza em tempo real enquanto a conversa corre aberta
                     if (recordsToMarkRead.length > 0) {
                         recordsToMarkRead.forEach(async mId => {
                             try { await updateDoc(doc(db, "direct_messages", roomId, "messages", mId), { read: true }); } catch(e){}
@@ -440,7 +431,6 @@
             if (text !== "" && currentUser && activeChatUser) {
                 const cache = text; messageInput.value = ""; const roomId = getChatRoomId(currentUser.uid, activeChatUser.uid);
                 try { 
-                    // Removido som local ao enviar. A mensagem sobe direto ao Firestore marcada inicialmente com "read: false"
                     await addDoc(collection(db, "direct_messages", roomId, "messages"), { 
                         text: cache, 
                         senderId: currentUser.uid, 
