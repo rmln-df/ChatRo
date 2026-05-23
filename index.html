@@ -34,7 +34,7 @@
         .avatar{width:40px;height:40px;border-radius:50%;background:#4f5d64;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;margin-right:15px;flex-shrink:0;user-select:none}
         .chat-info{flex:1;overflow:hidden}.chat-name{font-weight:600;font-size:1.05rem}
         .chat-last-msg{font-size:.85rem;color:var(--wa-text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .badge-unread{position:absolute;right:16px;background:var(--wa-teal);color:#fff;font-size:0.75rem;font-weight:bold;padding:2px 6px;border-radius:20px;display:none}
+        .badge-unread{position:absolute;right:16px;background:var(--wa-teal);color:#fff;font-size:0.75rem;font-weight:bold;min-width:20px;height:20px;border-radius:50%;display:none;align-items:center;justify-content:center;padding:2px}
         .header-left{display:flex;align-items:center;gap:10px;overflow:hidden}
         .back-btn{background:transparent;border:none;font-size:1.5rem;color:var(--wa-text-muted);cursor:pointer;padding:4px}
         .menu-container{position:relative;z-index:10}
@@ -48,8 +48,11 @@
         .message.sent{background:var(--wa-bubble-sent);align-self:flex-end;border-top-right-radius:0}
         .message.received{background:var(--wa-bubble-received);align-self:flex-start;border-top-left-radius:0}
         .message.selected{background:rgba(85,107,47,.3)!important}
-        .message-meta{display:inline-flex;align-items:center;float:right;margin:4px 0 -4px 8px;position:relative;bottom:-2px}
+        .message-meta{display:inline-flex;align-items:center;float:right;margin:4px 0 -4px 8px;position:relative;bottom:-2px;gap:4px}
         .message-time{font-size:.7rem;color:var(--wa-text-muted)}
+        .message-status{font-size:.75rem;font-weight:bold;line-height:1}
+        .message-status.unread{color:#8696a0}
+        .message-status.read{color:#81c784}
         .input-area{padding:12px;background:var(--wa-header);display:flex;align-items:center;gap:10px;z-index:5;box-shadow:0 -1px 4px rgba(0,0,0,.2)}
         .input-area input{flex:1;border:none;padding:12px;border-radius:10px;background:var(--wa-input-bg);color:var(--wa-text-main);font-size:1rem;outline:none}
         .send-btn{background:var(--wa-teal);color:#fff;border:none;font-weight:700;cursor:pointer;padding:12px 18px;border-radius:10px}
@@ -110,7 +113,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, setDoc, doc, query, orderBy, onSnapshot, serverTimestamp, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, setDoc, doc, query, orderBy, onSnapshot, serverTimestamp, getDocs, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBVTpFoYGWPk9_QJOz8_ZP9-pn6DYPOEao", authDomain: "chatro-e591c.firebaseapp.com",
@@ -135,7 +138,6 @@
                 try { new Notification(title, { body: messageBody }); } catch(e) {}
             }
         }
-
         function playNotificationSound() {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -155,6 +157,7 @@
             alertInterval = setInterval(() => { document.title = isAlert ? `🔔 Nova Mensagem!` : originalTitle; isAlert = !isAlert; }, 800);
             window.onfocus = window.onclick = window.onkeydown = () => { clearInterval(alertInterval); alertInterval = null; document.title = originalTitle; };
         }
+
         function openModal(title, text, buttons) {
             mTitle.innerText = title; mText.innerText = text; mButtons.innerHTML = "";
             buttons.forEach(btn => {
@@ -282,17 +285,15 @@
                     if (u.uid !== currentUser.uid) {
                         const item = document.createElement("div"); item.classList.add("chat-item"); const initial = u.name ? u.name.substring(0, 2).toUpperCase() : "U";
                         item.setAttribute("id", "user-item-" + u.uid);
-                        item.innerHTML = `<div class="avatar">${initial}</div><div class="chat-info"><div class="chat-name">${u.name || "Usuário"}</div><div class="chat-last-msg" id="last-msg-text-${u.uid}">Toque para abrir a conversa</div></div><div class="badge-unread" id="badge-unread-${u.uid}">1</div>`;
+                        item.innerHTML = `<div class="avatar">${initial}</div><div class="chat-info"><div class="chat-name">${u.name || "Usuário"}</div><div class="chat-last-msg" id="last-msg-text-${u.uid}">Toque para abrir a conversa</div></div><div class="badge-unread" id="badge-unread-${u.uid}">0</div>`;
                         item.onclick = () => selectChat(u); chatList.appendChild(item);
                         
-                        // Executa a escuta individual de forma totalmente segura
                         setTimeout(() => { listenToBackgroundRoom(u); }, 50);
                     }
                 });
             });
         }
 
-        // Sistema Protetor: Monitora novas mensagens em tempo real para o RECEPTOR
         function listenToBackgroundRoom(targetUser) {
             const roomId = getChatRoomId(currentUser.uid, targetUser.uid);
             if (globalActiveRooms[roomId]) return; 
@@ -302,30 +303,58 @@
 
             globalActiveRooms[roomId] = onSnapshot(q, snap => {
                 let lastMessageData = null;
-                snap.forEach(d => { lastMessageData = d.data(); });
+                let unreadCount = 0;
+
+                snap.forEach(d => { 
+                    const msg = d.data();
+                    lastMessageData = msg;
+                    // Se a mensagem foi enviada pelo outro usuário e está como não lida
+                    if (msg.senderId === targetUser.uid && msg.read !== true) {
+                        unreadCount++;
+                    }
+                });
 
                 if (lastMessageData) {
                     const label = document.getElementById(`last-msg-text-${targetUser.uid}`);
                     if (label) label.innerText = lastMessageData.text;
 
-                    // Gatilho do receptor: Executa os avisos imediatos se a mensagem for nova e não for do próprio usuário
+                    // Atualiza dinamicamente a bola verde com a quantidade exata de pendências
+                    const badge = document.getElementById(`badge-unread-${targetUser.uid}`);
+                    if (badge) {
+                        if (unreadCount > 0) {
+                            badge.innerText = unreadCount;
+                            badge.style.display = "flex";
+                        } else {
+                            badge.style.display = "none";
+                        }
+                    }
+
                     if (initialRoomLoads[roomId] && lastMessageData.senderId !== currentUser.uid) {
-                        // Verifica se o receptor NÃO está com o chat deste remetente aberto na tela
                         if (!activeChatUser || activeChatUser.uid !== targetUser.uid) {
+                            // Toca o som APENAS para quem está recebendo fora da sala ativa
                             playNotificationSound();
                             triggerVisualAlert();
                             sendSystemNotification(`Mensagem de ${targetUser.name}`, lastMessageData.text);
-                            
-                            const badge = document.getElementById(`badge-unread-${targetUser.uid}`);
-                            if (badge) badge.style.display = "block";
                         }
                     }
                 }
                 initialRoomLoads[roomId] = true;
             }, err => {
-                // Impede travamentos: se o nó de mensagens ainda não existir no Firebase, o app ignora o erro e continua rodando
                 initialRoomLoads[roomId] = true;
             });
+        }
+
+        async function markRoomAsRead(targetUid) {
+            const roomId = getChatRoomId(currentUser.uid, targetUid);
+            try {
+                const snap = await getDocs(collection(db, "direct_messages", roomId, "messages"));
+                snap.forEach(async dRef => {
+                    const data = dRef.data();
+                    if (data.senderId === targetUid && data.read !== true) {
+                        await updateDoc(doc(db, "direct_messages", roomId, "messages", dRef.id), { read: true });
+                    }
+                });
+            } catch(e) {}
         }
 
         function selectChat(user) { 
@@ -336,6 +365,8 @@
             const badge = document.getElementById(`badge-unread-${user.uid}`);
             if (badge) badge.style.display = "none";
             
+            // Assim que abre a sala, limpa as notificações e atualiza no servidor que você leu
+            markRoomAsRead(user.uid);
             navigateToScreen("chat"); 
             startChatListener(); 
         }
@@ -351,21 +382,54 @@
                 unsubscribeSnapshot = onSnapshot(q, snap => {
                     messagesWindow.innerHTML = ""; const marker = localStorage.getItem("clear_marker_" + currentUser.uid + "_" + roomId), timeLimit = marker ? parseInt(marker, 10) : 0;
                     let incomingNew = false;
+                    let recordsToMarkRead = [];
                     
                     snap.forEach(d => {
                         const msg = d.data(); if (msg.timestamp) { if (msg.timestamp.toDate().getTime() <= timeLimit) return; } else if (timeLimit > 0) return;
                         const box = document.createElement("div"); box.classList.add("message"); box.setAttribute("data-id", d.id); box.classList.add(msg.senderId === currentUser.uid ? "sent" : "received");
                         
-                        if (msg.senderId !== currentUser.uid) incomingNew = true;
+                        if (msg.senderId !== currentUser.uid) {
+                            incomingNew = true;
+                            // Se estou dentro do chat e recebo novas mensagens, guardo para atualizar o check de leitura
+                            if (msg.read !== true) recordsToMarkRead.push(d.id);
+                        }
                         
                         let tOut; const selectFn = () => { document.querySelectorAll(".message").forEach(m => m.classList.remove("selected")); box.classList.add("selected"); selectedMessageElement = box; };
                         box.addEventListener("touchstart", () => tOut = setTimeout(selectFn, 600)); box.addEventListener("touchend", () => clearTimeout(tOut)); box.addEventListener("contextmenu", e => { e.preventDefault(); selectFn(); });
-                        box.appendChild(document.createTextNode(msg.text)); const meta = document.createElement("span"); meta.className = "message-meta"; const time = document.createElement("span"); time.className = "message-time";
+                        box.appendChild(document.createTextNode(msg.text)); 
+                        
+                        const meta = document.createElement("span"); meta.className = "message-meta"; 
+                        const time = document.createElement("span"); time.className = "message-time";
                         time.innerText = msg.timestamp ? msg.timestamp.toDate().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "...";
-                        meta.appendChild(time); box.appendChild(meta); messagesWindow.appendChild(box);
+                        meta.appendChild(time); 
+                        
+                        // Sistema de confirmação visual: Adiciona o traço cinza ou verde apenas nas mensagens enviadas
+                        if (msg.senderId === currentUser.uid) {
+                            const statusIndicator = document.createElement("span");
+                            if (msg.read === true) {
+                                statusIndicator.className = "message-status read";
+                                statusIndicator.innerText = "✓"; // Lido (Verde)
+                            } else {
+                                statusIndicator.className = "message-status unread";
+                                statusIndicator.innerText = "✓"; // Não lido (Cinza)
+                            }
+                            meta.appendChild(statusIndicator);
+                        }
+
+                        box.appendChild(meta); messagesWindow.appendChild(box);
                     });
                     
-                    if (incomingNew && localFirstLoad) { playNotificationSound(); triggerVisualAlert(); }
+                    // Atualiza em tempo real enquanto a conversa corre aberta
+                    if (recordsToMarkRead.length > 0) {
+                        recordsToMarkRead.forEach(async mId => {
+                            try { await updateDoc(doc(db, "direct_messages", roomId, "messages", mId), { read: true }); } catch(e){}
+                        });
+                    }
+                    
+                    if (incomingNew && localFirstLoad) { 
+                        playNotificationSound(); 
+                        triggerVisualAlert(); 
+                    }
                     localFirstLoad = true; messagesWindow.scrollTop = messagesWindow.scrollHeight;
                 }, err => {});
             }
@@ -375,7 +439,16 @@
             const text = messageInput.value.trim();
             if (text !== "" && currentUser && activeChatUser) {
                 const cache = text; messageInput.value = ""; const roomId = getChatRoomId(currentUser.uid, activeChatUser.uid);
-                try { await addDoc(collection(db, "direct_messages", roomId, "messages"), { text: cache, senderId: currentUser.uid, senderName: currentUser.displayName || currentUser.email.split("@")[0], timestamp: serverTimestamp() }); } 
+                try { 
+                    // Removido som local ao enviar. A mensagem sobe direto ao Firestore marcada inicialmente com "read: false"
+                    await addDoc(collection(db, "direct_messages", roomId, "messages"), { 
+                        text: cache, 
+                        senderId: currentUser.uid, 
+                        senderName: currentUser.displayName || currentUser.email.split("@")[0], 
+                        timestamp: serverTimestamp(),
+                        read: false 
+                    }); 
+                } 
                 catch (err) { console.error(err); messageInput.value = cache; }
             }
         }
